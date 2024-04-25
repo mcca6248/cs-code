@@ -1,0 +1,200 @@
+'For programming tips, copy this address to your browser
+'search window:https:https://www.campbellsci.com/videos/datalogger-programming
+
+'CR1000 Series Datalogger
+'To create a different opening program template, type in new
+'instructions and select Template | Save as Default Template
+
+'Date: May 2023
+'Author: Dalyn McCauley, M.S., Faculty Research Assistant
+'Contact: dalyn.mccauley@oregonstate.edu
+
+Public vpd_set = 5.0 'kPa
+Public foggers As Boolean
+Public T_fog
+
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+Public mass(16), lys_mass(16)
+Dim lcnum(16)
+Dim LCount As Long
+Public Flag(12), switch(7) As Boolean
+Alias switch(1) = readsensors
+Public ATMOS(9)
+Public ATMOS14_fog(3,4)
+Public ATMOS14_dry(3,4)
+Public RH, VPD, vp_s
+
+' Change the Mult and Off variables to match the specific calibration equations 
+' for your load cells. This should be in units of kg
+
+Public Mult(16)={9.489772316,9.52164781,9.585988055,9.688277969,9.506095736,9.627452238,10.71183468,9.378818411,9.250073409,9.56575104,9.430896904,9.700186097,9.430896904,11.18224831,9.428961466,9.569638087} 'used avg calibration for LC 13 bc logger error was unable to calibrate with weights (Multiplexer channel 13 is not working).
+Public Offs(16)={-1.078998545,-1.252106539,-1.24839987,-1.00326998,-1.17383407,-0.963217449,-1.211967691,-1.153476426,-1.111814261,-1.159315327,-1.130255592,-1.049335964,-1.130255592,-1.200386073,-1.221854048,-1.160313691}
+
+'Public Mult(16)={6.51463494,6.711409396,6.800098686,6.733981287,6.688738759,6.779635049,6.733981287,6.733981287,6.779635049,6.993006993,6.992893004,6.666666667,6.802721088,6.825912063,6.896551724,6.849315068}
+'Public Offs(16)={-1.010850651,-0.805369128,-1.962576328,-0.930407969,-1.869468928,-1.036150393,-0.896738062,-1.650943967,-1.845186842,-1.363636364,-1.277352155,-1.093333333,-1.319727891,-0.26734434,-1.689655172,-1.239726027} 'kg
+
+
+Alias ATMOS(1)=solar
+Alias ATMOS(2)=precip
+Alias ATMOS(3)=strikes
+Alias ATMOS(4)=WS
+Alias ATMOS(5)=WD
+Alias ATMOS(6)=WG
+Alias ATMOS(7)=T_air
+Alias ATMOS(8)=P_vap
+Alias ATMOS(9)=P_atm
+
+Units solar=unit
+Units precip=unit
+Units strikes=unit
+Units WS=unit
+Units WD=unit
+Units WG=unit
+Units T_air=unit
+Units P_vap=unit
+Units P_atm=unit
+
+'Define Data Tables
+DataTable(store5min_all,True,-1)
+  DataInterval(0,5,Min,-1)
+  Sample(1,BattV,IEEE4,0)
+  Sample(1,PTemp_C,IEEE4,0)
+  Average(1,solar,FP2,False)
+	Totalize(1,precip,FP2,False)
+	Average(1,T_air,FP2,False)
+	Average(1,P_vap,FP2,False)
+	Average(1,P_atm,FP2,False)
+	Sample(1,vp_s,FP2, False)
+	Sample(1,VPD,FP2,False)
+	Totalize(1,strikes,FP2,False)
+	Average(1,WS,FP2,False)
+	Average(1,WD,FP2,False)
+	Average(1,WG,FP2,False)
+  Sample(16,lys_mass(),IEEE4)
+  Sample(12,ATMOS14_fog(),FP2,False)
+  Sample(12,ATMOS14_dry(),FP2,False)
+EndTable
+
+'These are intermediary tables used to simplify the program.
+DataTable(meanmass,Flag(3),3)
+	Average(16,mass(),IEEE4,0)
+EndTable
+
+Sub foggers_on
+    If foggers = True
+      PortSet(5,1)
+      T_fog = Timer(5,sec,0)
+    EndIf
+    
+    If T_fog >= 29
+      PortSet(5,0)
+      foggers = False
+      T_fog = Timer(5,sec,3)
+    EndIf
+EndSub
+
+
+'Main Program
+BeginProg
+SequentialMode
+	'Main Scan
+	Scan(30,sec,0,0) 
+	  'Default CR1000X Datalogger Battery Voltage measurement 'BattV'
+		Battery(BattV)
+		'Default CR1000X Datalogger Wiring Panel Temperature measurement 'PTemp_C'
+		PanelTemp(PTemp_C,60)
+		
+    '=======================================================================================
+		'measurements for ATMOS-41
+		'solar', 'precip', 'strikes','WS', 'WD', 'WG', 'T_air', 'P_vap', and 'P_atm'
+		SDI12Recorder(ATMOS(),3,0,"M!",1,0)
+		
+		'ATMOS-14 MEASUREMENT'
+		SDI12Recorder(ATMOS14_fog(1,1),7,"0","M!",1,0)
+	  SDI12Recorder(ATMOS14_fog(2,1),7,"5","M!",1,0)
+	  SDI12Recorder(ATMOS14_fog(3,1),7,"6","M!",1,0)
+	  SDI12Recorder(ATMOS14_dry(1,1),7,"7","M!",1,0)
+	  SDI12Recorder(ATMOS14_dry(2,1),7,"8","M!",1,0)
+	  SDI12Recorder(ATMOS14_dry(3,1),7,"9","M!",1,0)
+		
+    SatVP(vp_s,T_air)
+    RH = P_vap/vp_s * 100
+    VPD = vp_s - P_vap
+		
+    'Begin to query sensors when the readsensors switch is triggered. 
+		If readsensors = True Then
+		  'Loop counter will count up to 5 before it is restarted for the next measurement. 
+  		LCount=LCount+1  		
+      'Switch to MUX port
+  		PortSet(2,1)
+  		Delay(0,150,mSec)
+  		SubScan(0,uSec,16)
+  			'Switch to next AM16/32 Multiplexer channel
+  			PulsePort(1,10000)
+        'Count through the load cell numbers (1-16)
+  			lcnum = lcnum + 1
+  			
+  			'Generic Full Bridge measurements 'LC()' on the AM16/32 Multiplexer
+  			BrFull(mass(lcnum),1,AutoRange,1,VX1,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
+      'Go to next load cell scan	
+  		NextSubScan
+  		BrFull(mass(13),1,AutoRange,4,VX2,1,30,False,True,3000,_60Hz,Mult(13),Offs(13))	
+  		
+  		'Take the average of the five scans and put them in the meanmass table
+  		CallTable(meanmass)
+  		
+  		'Turn AM16/32 Multiplexer Off
+  		PortSet(2,0)
+  		Delay(0,150,mSec)
+  		'Restart the LC number counter
+  		lcnum = 0	
+		EndIf	
+
+    'When the Loop count (LCount) reaches three, record the 3 sample average for each load cell
+    If LCount = 5 Then
+       'Turn on Flag(3) whcih compiles the lysimeter masses and checks for 
+       'irrigation need. 
+       Flag(3) = True
+       'Take the average of the scans and put them in the meanmass table
+    	 CallTable meanmass
+    EndIf
+    
+   
+    'Retrieves average mass per lysimeter from meanmass table and puts it in the array lys_mass(). 
+    If Flag(3) = True Then 
+      GetRecord(lys_mass(),meanmass,1) ' Put five minute averages LC measurement into new array
+      
+      If VPD >= vpd_set Then
+          If TimeIntoInterval(0,600,Sec) Then
+            foggers = True
+          EndIf
+      EndIf
+    EndIf
+    
+    If foggers = True Then
+        Call foggers_on
+    EndIf
+    
+    'Once the average mass has been recorded and irrigation need assessed,
+    'reset the flag and the Loop Counter for next measurement
+    If Flag(3)=true AND LCount = 5 Then
+      Flag(3) = False
+      LCount = 0
+      readsensors = False
+    EndIf
+   
+    'Trigger a lysimeter read at the third minute into every five minute interval
+    If TimeIntoInterval(0,5,Min) Then
+      readsensors = true
+    EndIf
+    
+    'Store the five minute average values in a table every five minutes
+    If TimeIntoInterval(0,5,Min) Then
+      CallTable store5min_all
+    EndIf 
+	NextScan
+EndProg
+

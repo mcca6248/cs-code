@@ -1,0 +1,478 @@
+'The program is for use with a CR1000X Series Campbell Scientific datalogger. 
+'The neccesarry compoenents include a Campbell Scientific AM 16/32 Multiplexer, 
+'SPDT relay board, and 16 mini-lysimeters. 
+
+'The program is designd to control 4 solenoid valves to automate irrigation in 4 independent irrigation zones. 
+'Each zone is controlled by the average of three lysimeters in each zone. The program records
+'the lysimeter mass, panel temperature, and battery voltage every five minutes 
+'and outputs the table to the file titled 'store_5min_all'
+
+'Author: Dalyn McCauley, M.S., Faculty Research Assistant
+'Contact: dalyn.mccauley@oregonstate.edu
+
+'Set to True to enable irrigation control. False to only measure. 
+Public irr_control As Boolean
+Public sched_control As Boolean
+
+
+'Set the allowed depletion level you would like to trigger irrigation 
+'Ex: 0.90 = 10% depletion
+Public treat1 = .9
+Public treat2 = .9
+Public treat3 = .9
+Public treat4 = .9
+
+'Public fc_weight1 = 3.860 'Apr 1 2024 at 13:45
+'Public fc_weight2 = 3.957 
+'Public fc_weight3 = 4.035
+'Public fc_weight4 = 3.923
+
+Public fc_weight1 = 4.408 'Apr 3 2024 at 16:00. Weight of tray ~ 0.554
+Public fc_weight2 = 4.450 'Weight of tray ~ 0.484
+Public fc_weight3 = 4.555 'Weight of tray ~ 0.518
+Public fc_weight4 = 4.447 'Weight of tray ~ 0.522
+
+
+
+'Public vpd_set = 1.5 'kPa
+Public T_dur = 28 'Duration of timer in seconds
+Public max_count = 18 'Irrigation will never be going for longer than 1.5 hour2 (12 - 5 minute pulses)
+
+Public mass(20), mass_c(20),lys_mass(20), avg_mass(4), avg_massi(4), trig_mass(4), irr_count(4), fill(4), perFC(4),stdv(4)
+Public lys_array(4,5)
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+
+Dim lcnum(20)
+Dim LCount As Long
+Public Flag(12), switch(7)
+Public irr(4) As Boolean
+Public outlier_detected
+Public T1,T2,T3,T4,i,j
+Public HMP_T, HMP_RH, PAR_Den, PAR_Tot, RadW, RadMJ, vpd, es, ea
+
+' Change the Mult and Off variables to match the specific calibration equations 
+' for your load cells. This should be in units of kg
+' CALIBRATED ON 1/8/24
+' Public Mult(16)={6.51463494,6.711409396,6.800098686,6.733981287,6.688738759,6.779635049,6.733981287,6.733981287,6.779635049,6.993006993,6.992893004,6.666666667,6.802721088,6.825912063,6.896551724,6.849315068}
+Public Mult(20)={6.538260984,6.734195071,7.011901521,6.727945932,6.658706224,6.789760912,6.726504375,6.733051676,6.778153501,6.980383179,6.990732783,6.65515081,6.805772505,6.821563227,6.874522091,6.841285856}
+
+' Public Offs(16)={-1.010850651,-0.805369128,-1.962576328,-0.930407969,-1.869468928,-1.036150393,-0.896738062,-1.650943967,-1.845186842,-1.363636364,-1.277352155,-1.093333333,-1.319727891,-0.26734434,-1.689655172,-1.239726027} 'kg
+Public Offs(20)={-1.072666016,-0.825073142, -2.11724085,-0.996798215,-1.811163062,-1.094327243,-0.854972228,-1.653764692,-1.957547915,-1.361863448,-1.316331927,-1.087811922,-1.356910154,-0.286839698,-1.716222,-1.262473874}
+
+' Change the Mult_T and Off_T variables to match the specific temperature
+' correction results for your load cells. 
+' These should be in units of grams/degC and grams. 
+Public Mult_T(20) ={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+Public Offs_T(20) ={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+
+'Define constants and Aliases that are used throughout the program. 
+Const on = 1
+Const off = 0
+Alias switch(1) = readsensors
+
+'Define Units of vairables for table output.
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units mass=mV/V
+Units lys_mass = Kg
+Units PAR_Den=umol/s/m^2
+Units PAR_Tot=mmol/m^2
+
+'Define Data Tables
+DataTable(store5min_all,True,-1)
+  DataInterval(0,5,Min,-1)
+  Sample(1,BattV,IEEE4,0)
+  Sample(1,PTemp_C,IEEE4,0)
+  Sample(1,avg_massi(1), IEEE4,0)
+  Sample(1,avg_massi(2), IEEE4,0)
+  Sample(1,avg_massi(3), IEEE4,0)
+  Sample(1,avg_massi(4), IEEE4,0)
+  Sample(1,avg_mass(1), IEEE4,0)
+  Sample(1,avg_mass(2), IEEE4,0)
+  Sample(1,avg_mass(3), IEEE4,0)
+  Sample(1,avg_mass(4), IEEE4,0)
+  Sample(1,stdv(1),IEEE4,0)
+  Sample(1,stdv(2),IEEE4,0)
+  Sample(1,stdv(3),IEEE4,0)
+  Sample(1,stdv(4),IEEE4,0)
+  Sample(1,perFC(1), IEEE4,0)
+  Sample(1,perFC(2), IEEE4,0)
+  Sample(1,perFC(3), IEEE4,0)
+  Sample(1,perFC(4), IEEE4,0)
+  Sample(20,lys_mass(),IEEE4)
+  Sample(1,outlier_detected,IEEE4)
+  Totalize(1,irr(1),IEEE4,0)
+  Totalize(1,irr(2),IEEE4,0)
+  Totalize(1,irr(3),IEEE4,0)
+  Totalize(1,irr(4),IEEE4,0)
+  Average(1,PAR_Den,FP2,False)
+	Totalize(1,PAR_Tot,IEEE4,False)
+	Average(1,vpd,IEEE4,0)
+  Average(1,HMP_T,IEEE4,0)
+  Average(1,HMP_RH,IEEE4,0)
+  Average(1,RadW,IEEE4,0)
+  Average(1,RadMJ,IEEE4,0)
+EndTable
+
+'These are intermediary tables used to simplify the program.
+DataTable(meanmass,Flag(3),-1)
+	Average(20,mass(),IEEE4,0)
+	StdDev(1,lys_mass(),IEEE4,0)
+	Sample(20,lys_array(),IEEE4,0)
+EndTable
+
+DataTable(meanmass_c,Flag(3),-1)
+	Average(20,mass_c(),IEEE4,0)
+EndTable
+
+'Define the subroutine for starting irrigation
+Sub irr_start
+    'AvgSpa(Total_sol_on,num_sol,irr(1)) 
+    'Total_sol_on = Total_sol_on * -num_sol
+    If irr(1) = True
+      PortSet(C4,1)
+      T1 = Timer(1,sec,0)
+    EndIf
+    
+    'If irr(2) = True AND Total_sol_on <= 1
+    If irr(2) = True AND irr(1) = False
+      PortSet(C5,1)
+      T2 = Timer(2,sec,0)
+    EndIf
+    
+    'If irr(3) = True AND Total_sol_on <= 1
+    If irr(3) = True AND irr(1) = False AND irr(2) = False
+      PortSet(C6,1)
+      T3 = Timer(3,sec,0)
+    EndIf
+    
+' '   If irr(4) = True AND Total_sol_on <= 1
+    If irr(4) = True AND irr(1) = False AND irr(2) = False AND irr(3) = False
+      PortSet(C7,1)
+      T4 = Timer(4,sec,0)
+    EndIf
+   
+    
+  ' If the timer is greater than 30s
+  ' turn solenoid off and set irr() flag to zero
+    If T1 >= T_dur Then
+      PortSet(C4,0)
+      irr_count(1) = irr_count(1) + 1
+      T1 = Timer(1,sec,3) ' stop and reset timer
+      irr(1) = False
+    EndIf
+ 
+    If T2 >= T_dur
+      PortSet(C5,0)
+      irr_count(2) = irr_count(2) + 1
+      T2 = Timer(2,sec,3)
+      irr(2) = False
+    EndIf
+    
+    If T3 >= T_dur
+      PortSet(C6,0)
+      irr_count(3) = irr_count(3) + 1
+      T3 = Timer(3,sec,3)
+      irr(3) = False
+    EndIf
+    
+    If T4 >= T_dur
+      PortSet(C7,0)
+      irr_count(4) = irr_count(4) + 1
+      T4 = Timer(4,sec,3)
+      irr(4) = False
+    EndIf
+EndSub
+
+'Main Program
+BeginProg
+
+SequentialMode
+	'Main Scan
+	irr_control = False
+	sched_control = True
+  
+  trig_mass(1) = fc_weight1*treat1
+  trig_mass(2) = fc_weight2*treat2
+  trig_mass(3) = fc_weight3*treat3
+  trig_mass(4) = fc_weight4*treat4
+ 
+	irr(1) = False
+	irr(2) = False
+	irr(3) = False
+  irr(4) = False
+	Scan(10,Sec,0,0) 
+	  outlier_detected = 0
+	  SW12 (SW12_1,1)
+	  'Default CR1000X Datalogger Battery Voltage measurement 'BattV'
+		Battery(BattV)
+		'Default CR1000X Datalogger Wiring Panel Temperature measurement 'PTemp_C'
+		PanelTemp(PTemp_C,60)
+	  'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
+		VoltSe(RadW,1,mV1000,5,True,0,60,1,0)
+		If RadW<0 Then RadW=0
+		'Calculate total flux
+		'The multiplier to calculate total flux was calculated by Short Cut
+		'and based on a program execution rate (scan rate) of 5 Seconds.
+		'If you change the program execution rate outside of Short Cut with the CRBasic Editor
+		'you will need to recalculate this multiplier. See the sensor manual for more details.
+		RadMJ=RadW*2.5E-05
+		'Calculate flux density
+		RadW=RadW*5
+		
+		
+		'HMP50/HMP60 Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
+		VoltSe(HMP_T,1,mV1000,9,False,0,60,0.1,-40)
+		VoltSe(HMP_RH,1,mV1000,10,False,0,60,0.1,0)
+		SW12 (SW12_1,0)
+		If (HMP_RH>100) AND (HMP_RH<108) Then HMP_RH=100 
+    SatVP (es,HMP_T)
+    ea = es*HMP_RH/100
+    vpd = es - ea
+		'LI190R Quantum Sensor measurements 'PAR_Tot' and 'PAR_Den
+		VoltDiff(PAR_Den,1,mV200,4,True,0,60,1,0)
+		If PAR_Den<0 Then PAR_Den=0
+		'Calculate total flux
+		'The multiplier to calculate total flux was calculated by Short Cut
+		'and based on a program execution rate (scan rate) of 30 Seconds.
+		'If you change the program execution rate outside of Short Cut with the CRBasic Editor
+		'you will need to recalculate this multiplier. See the sensor manual for more details.
+		PAR_Tot=PAR_Den*6.794648
+		'Calculate flux density
+		PAR_Den=PAR_Den*226.4883
+		
+    'Begin to query sensors when the readsensors switch is triggered. 
+		If readsensors = True Then
+		  If TimeIntoInterval(0,1,Min) Then
+  		  'Loop counter will count up to 5 before it is restarted for the next measurement. 
+    		LCount=LCount+1  		
+        'Switch to MUX1 port
+    		PortSet(C2,1)
+    		Delay(0,150,mSec)
+    		SubScan(0,uSec,10)
+    			'Switch to next AM16/32 Multiplexer channel
+    			PulsePort(C1,10000)
+          'Count through the load cell numbers (1-16)
+    			lcnum = lcnum + 1
+    			
+    			'Generic Full Bridge measurements 'LC()' on the AM16/32 Multiplexer
+    			BrFull(mass(lcnum),1,AutoRange,1,VX1,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
+    			mass_c(lcnum) = mass(lcnum) - (PTemp_C*Mult_T(lcnum)+Offs_T(lcnum))/1000
+        'Go to next load cell scan	
+    		NextSubScan
+    		
+    		'Switch to MUX2 port
+    		PortSet(C3,1)
+    		Delay(0,150,mSec)
+    		SubScan(0,uSec,10)
+    			'Switch to next AM16/32 Multiplexer channel
+    			PulsePort(C1,10000)
+          'Count through the load cell numbers (1-16)
+    			lcnum = lcnum + 1
+    			
+    			'Generic Full Bridge measurements 'LC()' on the AM16/32 Multiplexer
+    			BrFull(mass(lcnum),1,AutoRange,1,VX1,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
+    			mass_c(lcnum) = mass(lcnum) - (PTemp_C*Mult_T(lcnum)+Offs_T(lcnum))/1000
+        'Go to next load cell scan	
+    		NextSubScan
+    		
+    		'Take the average of the five scans and put them in the meanmass table
+    		CallTable(meanmass)
+    		CallTable(meanmass_c)
+    		
+    		'Turn both AM16/32 Multiplexers Off
+    		PortSet(C2,0)
+    		PortSet(C3,0)
+    		Delay(0,150,mSec)
+    		'Restart the LC number counter
+    		lcnum = 0		
+    	EndIf
+		EndIf	
+
+    'When the Loop count (LCount) reaches five, record the 5 sample average for each load cell
+    If LCount = 5 Then
+       'Turn on Flag(3) whcih compiles the lysimeter masses and checks for 
+       'irrigation need. 
+       Flag(3) = True
+       'Take the average of the scans and put them in the meanmass table
+    	 CallTable meanmass
+    	 CallTable meanmass_c
+    EndIf
+   
+    'Retrieves average mass per lysimeter from meanmass table and puts it in the array lys_mass(). 
+    If Flag(3) = True Then 
+      GetRecord(lys_mass(),meanmass_c,1) ' Put five minute averages LC measurement into new array
+      'TREATMENT 1
+      lys_array(1,1) = lys_mass(2)
+      lys_array(1,2) = lys_mass(7)
+      lys_array(1,3) = lys_mass(9)
+      lys_array(1,4) = lys_mass(14)
+      lys_array(1,4) = lys_mass(17)
+      'TREATMENT 2
+      lys_array(2,1) = lys_mass(1)
+      lys_array(2,2) = lys_mass(5)
+      lys_array(2,3) = lys_mass(10)
+      lys_array(2,4) = lys_mass(12)
+      lys_array(2,4) = lys_mass(18)
+      'TREATMENT 3
+      lys_array(3,1) = lys_mass(3)
+      lys_array(3,2) = lys_mass(6)
+      lys_array(3,3) = lys_mass(13)
+      lys_array(3,4) = lys_mass(15)
+      lys_array(3,4) = lys_mass(19)
+      'TREATMENT 4
+      lys_array(4,1) = lys_mass(4)
+      lys_array(4,2) = lys_mass(8)
+      lys_array(4,3) = lys_mass(11)
+      lys_array(4,4) = lys_mass(16)
+      lys_array(4,4) = lys_mass(20)
+      
+      'Calculate the current avaerage mass per irrigation treatment zone, denoted avg_mass. 
+      AvgSpa(avg_massi(1),5,lys_array(1,1))
+      AvgSpa(avg_massi(2),5,lys_array(2,1))
+      AvgSpa(avg_massi(3),5,lys_array(3,1))
+      AvgSpa(avg_massi(4),5,lys_array(4,1))
+      
+      StdDevSpa (stdv(1),5,lys_array(1,1))
+      StdDevSpa (stdv(2),5,lys_array(2,1))
+      StdDevSpa (stdv(3),5,lys_array(3,1))
+      StdDevSpa (stdv(4),5,lys_array(4,1))
+      
+      
+      SubScan(0,uSec,10)
+        For i = 1 To 4
+          For j = 1 To 5
+            If lys_array(i,j) > avg_massi(i) + 2*stdv(i) Then
+               lys_array(i,j) = NAN
+               outlier_detected = outlier_detected + 1
+            EndIf
+            If lys_array(i,j) < avg_massi(i) - 2*stdv(i) Then
+               lys_array(i,j) = NAN
+               outlier_detected = outlier_detected + 1
+            EndIf
+            If lys_array(i,j) < 1.0 OR lys_array(i,j) > 5.0 Then
+               lys_array(i,j) = NAN
+               outlier_detected = outlier_detected + 1
+            EndIf
+          Next
+        Next
+      NextSubScan
+      
+      AvgSpa(avg_mass(1),5,lys_array(1,1))
+      AvgSpa(avg_mass(2),5,lys_array(2,1))
+      AvgSpa(avg_mass(3),5,lys_array(3,1))
+      AvgSpa(avg_mass(4),5,lys_array(4,1))
+      
+      perFC(1) = avg_mass(1) / fc_weight1 * 100
+      perFC(2) = avg_mass(2) / fc_weight2 * 100
+      perFC(3) = avg_mass(3) / fc_weight3 * 100
+      perFC(4) = avg_mass(4) / fc_weight4 * 100
+
+
+     If irr_control = True Then
+       'If the trigger mass Is below the threshold, irrigation Is initiated For that zone.   
+       'TREATMENT 1
+        If avg_mass(1)< trig_mass(1) Then 
+  				irr(1) = True 'If true, turn on irrigation flag for that zone.
+  				fill(1) = True 'Flag to note we are on the fill up, not dry down. 
+  			EndIf
+  			If fill(1) = True AND avg_mass(1) < fc_weight1 Then
+  			  irr(1) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
+  			EndIf
+        If avg_mass(1)>= fc_weight1 OR irr_count(1) >= max_count Then 
+          irr_count(1) = 0.0 'reset counter
+          fill(1) = False ' Once we reach fc weight, turn off fill up flag. 
+  				irr(1) = False 'If true, turn on irrigation flag for that zone.
+  			EndIf
+  			
+  			'TREATMENT 2
+        If avg_mass(2)< trig_mass(2) Then 
+  				irr(2) = True 'If true, turn on irrigation flag for that zone. 
+  				fill(2) = True
+  			EndIf
+  			If fill(2) = True AND avg_mass(2) < fc_weight2 Then
+  			  irr(2) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
+  			EndIf
+        If avg_mass(2)>= fc_weight2 OR irr_count(2) >= max_count Then 
+          irr_count(2) = 0.0 'reset counter
+          fill(2) = False ' Once we reach fc weight, turn off fill up flag. 
+  				irr(2) = False 'If true, turn on irrigation flag for that zone.
+  			EndIf
+        'TREATMENT 3
+        If avg_mass(3)< trig_mass(3)  Then 
+  				irr(3) = True 'If true, turn on irrigation flag for that zone. 
+  				fill(3) = True
+  			EndIf
+  			If fill(3) = True AND avg_mass(3) < fc_weight3 Then
+  			  irr(3) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
+  			EndIf
+        If avg_mass(3)>= fc_weight3 OR irr_count(3) >= max_count Then 
+          irr_count(3) = 0.0 'reset counter
+          fill(3) = False ' Once we reach fc weight, turn off fill up flag. 
+  				irr(3) = False 'If true, turn on irrigation flag for that zone.
+  			EndIf
+  			'TREATMENT 4
+        If avg_mass(4)< trig_mass(4) Then 
+  				irr(4) = True 'If true, turn on irrigation flag for that zone. 
+  				fill(4) = True
+  			EndIf
+  			If fill(4) = True AND avg_mass(4) < fc_weight4 Then
+  			  irr(4) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
+  			EndIf
+  			If avg_mass(4)>= fc_weight4 OR irr_count(4) >= max_count Then 
+  				irr_count(4) = 0 'reset counter
+  				fill(4) = False  'Once we reach fc weight, turn off fill up flag.
+  				irr(4) = False 'If true, turn on irrigation flag for that zone.
+  			EndIf
+  		EndIf
+  		If sched_control = True
+  		  If TimeIntoInterval(480,1440,Min) Then
+  		    irr(1) = True
+  		    irr(2) = True
+  		    irr(3) = True
+  		    irr(4) = True
+  		  EndIf
+  		  If TimeIntoInterval(720,1440,Min) Then
+  		    irr(1) = True
+  		    irr(2) = True
+  		    irr(3) = True
+  		    irr(4) = True
+  		  EndIf
+  		  If TimeIntoInterval(960,1440,Min) Then
+  		    irr(1) = True
+  		    irr(2) = True
+  		    irr(3) = True
+  		    irr(4) = True
+  		  EndIf
+  		EndIf
+    EndIf
+    
+    If irr_control = True Then
+      'If any of the irrigation flags are true, call irr_start subroutine.
+      If irr(1) = True OR irr(2) = True OR irr(3) = True OR irr(4) = True
+      	Call irr_start
+      EndIf
+    EndIf
+    
+    'Once the average mass has been recorded and irrigation need assessed,
+    'reset the flag and the Loop Counter for next measurement
+    If Flag(3)=true AND LCount = 5 Then
+      Flag(3) = False
+      LCount = 0
+      readsensors = False
+    EndIf
+   
+    'Trigger a lysimeter read at the third minute into every five minute interval
+    If TimeIntoInterval(0,5,Min) Then
+      readsensors = true
+    EndIf
+    
+    'Store the five minute average values in a table every five minutes
+    If TimeIntoInterval(0,5,Min) Then
+      CallTable store5min_all
+    EndIf 
+	NextScan
+EndProg
