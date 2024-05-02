@@ -17,9 +17,10 @@ Public irr_control As Boolean
 'Set the allowed depletion level you would like to trigger irrigation 
 'Ex: 0.90 = 10% depletion
 Public treat1 = .9
-Public treat2 = .75
-Public treat3 = .60
-Public treat4 = .45
+Public treat2 = .9
+Public treat3 = .9
+Public treat4 = .9
+Public refill = 0.98 'percent weight to refill pots to.
 
 'Public fc_weight1 = 3.860 'Apr 1 2024 at 13:45
 'Public fc_weight2 = 3.957 
@@ -58,10 +59,10 @@ Public HMP_T, HMP_RH, PAR_Den, PAR_Tot, RadW, RadMJ, vpd, es, ea
 ' for your load cells. This should be in units of kg
 ' CALIBRATED ON 1/8/24
 ' Public Mult(16)={6.51463494,6.711409396,6.800098686,6.733981287,6.688738759,6.779635049,6.733981287,6.733981287,6.779635049,6.993006993,6.992893004,6.666666667,6.802721088,6.825912063,6.896551724,6.849315068}
-Public Mult(16)={6.538260984,6.734195071,7.011901521,6.727945932,6.658706224,6.789760912,6.726504375,6.733051676,6.778153501,6.980383179,6.990732783,6.65515081,6.805772505,6.821563227,6.874522091,6.841285856}
+Public Mult(16)={6.538260984,6.734195071,7.011901521,6.727945932,6.658706224,6.789760912,6.8691,6.733051676,6.778153501,6.980383179,6.990732783,6.65515081,6.805772505,6.821563227,6.874522091,6.841285856}
 
 ' Public Offs(16)={-1.010850651,-0.805369128,-1.962576328,-0.930407969,-1.869468928,-1.036150393,-0.896738062,-1.650943967,-1.845186842,-1.363636364,-1.277352155,-1.093333333,-1.319727891,-0.26734434,-1.689655172,-1.239726027} 'kg
-Public Offs(16)={-1.072666016,-0.825073142, -2.11724085,-0.996798215,-1.811163062,-1.094327243,-0.854972228,-1.653764692,-1.957547915,-1.361863448,-1.316331927,-1.087811922,-1.356910154,-0.286839698,-1.716222,-1.262473874}
+Public Offs(16)={-1.072666016,-0.825073142, -2.11724085,-0.996798215,-1.811163062,-1.094327243,- 1.1899,-1.653764692,-1.957547915,-1.361863448,-1.316331927,-1.087811922,-1.356910154,-0.286839698,-1.716222,-1.262473874}
 
 ' Change the Mult_T and Off_T variables to match the specific temperature
 ' correction results for your load cells. 
@@ -312,7 +313,7 @@ SequentialMode
       lys_array(2,4) = lys_mass(15)
       'TREATMENT 3
       lys_array(3,1) = lys_mass(4)
-      'lys_array(3,2) = lys_mass(7) 'ignored 7 on 4/11/24
+      lys_array(3,2) = lys_mass(7) 'ignored 7 on 4/11/24
       lys_array(3,3) = lys_mass(12)
       lys_array(3,4) = lys_mass(13)
       'TREATMENT 4
@@ -369,10 +370,10 @@ SequentialMode
   				irr(1) = True 'If true, turn on irrigation flag for that zone.
   				fill(1) = True 'Flag to note we are on the fill up, not dry down. 
   			EndIf
-  			If fill(1) = True AND avg_mass(1) < fc_weight1 Then
+  			If fill(1) = True AND avg_mass(1) < refill * fc_weight1 Then
   			  irr(1) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
   			EndIf
-        If avg_mass(1)>= fc_weight1 OR irr_count(1) >= max_count Then 
+        If avg_mass(1)>= refill * fc_weight1 OR irr_count(1) >= max_count Then 
           irr_count(1) = 0.0 'reset counter
           fill(1) = False ' Once we reach fc weight, turn off fill up flag. 
   				irr(1) = False 'If true, turn on irrigation flag for that zone.
@@ -383,10 +384,10 @@ SequentialMode
   				irr(2) = True 'If true, turn on irrigation flag for that zone. 
   				fill(2) = True
   			EndIf
-  			If fill(2) = True AND avg_mass(2) < fc_weight2 Then
+  			If fill(2) = True AND avg_mass(2) < refill * fc_weight2 Then
   			  irr(2) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
   			EndIf
-        If avg_mass(2)>= fc_weight2 OR irr_count(2) >= max_count Then 
+        If avg_mass(2)>= refill * fc_weight2 OR irr_count(2) >= max_count Then 
           irr_count(2) = 0.0 'reset counter
           fill(2) = False ' Once we reach fc weight, turn off fill up flag. 
   				irr(2) = False 'If true, turn on irrigation flag for that zone.
@@ -396,10 +397,10 @@ SequentialMode
   				irr(3) = True 'If true, turn on irrigation flag for that zone. 
   				fill(3) = True
   			EndIf
-  			If fill(3) = True AND avg_mass(3) < fc_weight3 Then
+  			If fill(3) = True AND avg_mass(3) < refill * fc_weight3 Then
   			  irr(3) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
   			EndIf
-        If avg_mass(3)>= fc_weight3 OR irr_count(3) >= max_count Then 
+        If avg_mass(3)>= refill * fc_weight3 OR irr_count(3) >= max_count Then 
           irr_count(3) = 0.0 'reset counter
           fill(3) = False ' Once we reach fc weight, turn off fill up flag. 
   				irr(3) = False 'If true, turn on irrigation flag for that zone.
@@ -409,10 +410,10 @@ SequentialMode
   				irr(4) = True 'If true, turn on irrigation flag for that zone. 
   				fill(4) = True
   			EndIf
-  			If fill(4) = True AND avg_mass(4) < fc_weight4 Then
+  			If fill(4) = True AND avg_mass(4) < refill * fc_weight4 Then
   			  irr(4) = True 'Keep irrigation while we are below FC wieght, only on the fill up. 
   			EndIf
-  			If avg_mass(4)>= fc_weight4 OR irr_count(4) >= max_count Then 
+  			If avg_mass(4)>= refill * fc_weight4 OR irr_count(4) >= max_count Then 
   				irr_count(4) = 0 'reset counter
   				fill(4) = False  'Once we reach fc weight, turn off fill up flag.
   				irr(4) = False 'If true, turn on irrigation flag for that zone.
