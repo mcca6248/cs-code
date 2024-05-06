@@ -9,7 +9,7 @@
 'Author: Dalyn McCauley, M.S., Faculty Research Assistant
 'Contact: dalyn.mccauley@oregonstate.edu
 
-Public vpd_set = 5.0 'kPa
+Public vpd_set = 1.5 'kPa
 Public foggers As Boolean
 Public T_fog
 
@@ -30,8 +30,8 @@ Public RH, VPD, vp_s
 ' Change the Mult and Off variables to match the specific calibration equations 
 ' for your load cells. This should be in units of kg
 
-Public Mult(16)={9.489772316,9.52164781,9.585988055,9.688277969,9.506095736,9.627452238,10.71183468,9.378818411,9.250073409,9.56575104,9.430896904,9.700186097,9.430896904,11.18224831,9.428961466,9.569638087} 'used avg calibration for LC 13 bc logger error was unable to calibrate with weights (Multiplexer channel 13 is not working).
-Public Offs(16)={-1.078998545,-1.252106539,-1.24839987,-1.00326998,-1.17383407,-0.963217449,-1.211967691,-1.153476426,-1.111814261,-1.159315327,-1.130255592,-1.049335964,-1.130255592,-1.200386073,-1.221854048,-1.160313691}
+Public Mult(16)={1,1,1,1,1,1,1,1,9.250073409,9.56575104,9.430896904,9.700186097,9.430896904,11.18224831,9.428961466,9.569638087} 'used avg calibration for LC 13 bc logger error was unable to calibrate with weights (Multiplexer channel 13 is not working).
+Public Offs(16)={0,0,0,0,0,0,0,0,-1.111814261,-1.159315327,-1.130255592,-1.049335964,-1.130255592,-1.200386073,-1.221854048,-1.160313691}
 
 'Public Mult(16)={6.51463494,6.711409396,6.800098686,6.733981287,6.688738759,6.779635049,6.733981287,6.733981287,6.779635049,6.993006993,6.992893004,6.666666667,6.802721088,6.825912063,6.896551724,6.849315068}
 'Public Offs(16)={-1.010850651,-0.805369128,-1.962576328,-0.930407969,-1.869468928,-1.036150393,-0.896738062,-1.650943967,-1.845186842,-1.363636364,-1.277352155,-1.093333333,-1.319727891,-0.26734434,-1.689655172,-1.239726027} 'kg
@@ -141,7 +141,7 @@ SequentialMode
   			BrFull(mass(lcnum),1,AutoRange,1,VX1,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
       'Go to next load cell scan	
   		NextSubScan
-  		BrFull(mass(13),1,AutoRange,4,VX2,1,30,False,True,3000,_60Hz,Mult(13),Offs(13))	
+  		BrFull(mass(13),1,AutoRange,4,VX2,1,2500,False,True,500,60,Mult(13),Offs(13))	
   		
   		'Take the average of the five scans and put them in the meanmass table
   		CallTable(meanmass)
@@ -154,7 +154,7 @@ SequentialMode
 		EndIf	
 
     'When the Loop count (LCount) reaches three, record the 3 sample average for each load cell
-    If LCount = 5 Then
+    If LCount = 6 Then
        'Turn on Flag(3) whcih compiles the lysimeter masses and checks for 
        'irrigation need. 
        Flag(3) = True
@@ -180,14 +180,14 @@ SequentialMode
     
     'Once the average mass has been recorded and irrigation need assessed,
     'reset the flag and the Loop Counter for next measurement
-    If Flag(3)=true AND LCount = 5 Then
+    If Flag(3)=true AND LCount = 6 Then
       Flag(3) = False
       LCount = 0
       readsensors = False
     EndIf
    
     'Trigger a lysimeter read at the third minute into every five minute interval
-    If TimeIntoInterval(0,5,Min) Then
+    If TimeIntoInterval(2,5,Min) Then
       readsensors = true
     EndIf
     
