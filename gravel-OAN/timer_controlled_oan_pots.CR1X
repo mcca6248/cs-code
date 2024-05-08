@@ -274,7 +274,7 @@ SequentialMode
     			lcnum = lcnum + 1
     			
     			'Generic Full Bridge measurements 'LC()' on the AM16/32 Multiplexer
-    			BrFull(mass(lcnum),1,AutoRange,1,VX2,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
+    			BrFull(mass(lcnum),1,AutoRange,1,VX1,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
     			mass_c(lcnum) = mass(lcnum) - (PTemp_C*Mult_T(lcnum)+Offs_T(lcnum))/1000
         'Go to next load cell scan	
     		NextSubScan
