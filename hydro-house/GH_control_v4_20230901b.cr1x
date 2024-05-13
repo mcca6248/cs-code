@@ -1,0 +1,360 @@
+'CR1000X Series
+'Created by Short Cut (4.3)
+
+'Declare Variables and Units
+
+'Set logging params
+Public interval = 5
+Public I
+
+'Set DLI params
+Public photo = 12'Hours
+Public setpoint_DLI = 17 '[mol/day*m^2] for tomatoes 
+Public DLI_check
+Public first = true 'First run
+Public LastRec(50)
+
+'Set VPD params
+Public setpoint_VPD = 0.8 'kPa for tomatoes
+Public T1_vent, T2_fog
+Public push As Boolean
+
+Public meanvpd, meantemp, meanrh
+
+'Intiate control state
+Public leds(6) As Boolean, Exhaust(2) As Boolean, Fans(1) As Boolean, Heater(2) As Boolean, Fog(1) As Boolean, venting(1) As Boolean, override_venting(1) As Boolean, cooling(2) As Boolean
+
+'Set Sensor params
+Public BattV
+Public PTemp_C
+Public PAR(6)
+Public Mult(6)={0.8,0.8,0.8,0.8,0.8,0.8}
+Public Offs(6)={0,0,0,0,0,0}
+Public temp(3), RH(3), VPD(3), DLI(6), IRT1(2), IRT2(2)
+Public VPs(3), VPa(3)
+Public h, time(9)
+
+'CD16_Output(I):
+'I = 1 to 6 are for LEDS, 
+'I = 7 is for West Exhaust and Luevers, 
+'I = 8 is for East Exhaust, 
+'I = 9 is for HAF recirc fans11 is for exhaust 
+'I = 10 is for West Heater & recirc fans
+'I = 11 is for East Heater & recirc fans
+'I = 13 is for foggers solenoid
+Dim CD16_Output(16)
+
+Alias IRT1(1) = T_can1
+Alias IRT1(2) = T_body1
+Alias IRT2(1) = T_can2
+Alias IRT2(2) = T_body2
+
+Alias temp(1) = T_zone4
+Alias RH(1) = RH_zone4
+Alias VPD(1) = VPD_zone4
+
+Alias temp(2) = T_zone2
+Alias RH(2) = RH_zone2
+Alias VPD(2) = VPD_zone2
+
+Alias temp(3) = T_outside
+Alias RH(3) = RH_outside
+Alias VPD(3) = VPD_outside
+
+'Define Data Tables
+DataTable(min5,True,-1)
+	DataInterval(0,5,Min,10)
+	Sample(1,BattV,FP2,False)
+  Average(1,meantemp,FP2,False)
+	Average(1,meanvpd,FP2,False)
+	Average(1,meanrh,FP2,False)
+	Average(1,T_outside,FP2,False)
+	Average(1,RH_outside,FP2,False)
+	Average(1,VPD_outside,FP2,False)
+	Average(1,temp(1),FP2,False)
+	Average(1,RH(1),FP2,False)
+	Average(1,VPD(1),FP2,False)
+	Average(1,temp(2),FP2,False)
+	Average(1,RH(2),FP2,False)
+	Average(1,VPD(2),FP2,False)
+	Average(1,T_can1,FP2,False)
+	Average(1,T_body1,FP2,False)
+	Average(1,T_can2,FP2,False)
+	Average(1,T_body2,FP2,False)
+	Average(6,PAR(),FP2,False)
+	Sample(6,DLI(),FP2,False)
+	Sample(1,DLI_check,FP2,False)
+  Totalize(6,leds(),FP2,False)
+  Totalize(1,cooling(1),FP2,False)
+  Totalize(1,cooling(2),FP2,False)
+  Totalize(1,venting(1),FP2,False)
+  Totalize(1,override_venting(1),FP2,False)
+  Totalize(1,Exhaust(1),FP2,False)
+  Totalize(1,Exhaust(2),FP2,False)
+  Totalize(1,Fans,FP2,False)
+  Totalize(1,Heater(1),FP2,False)
+  Totalize(1,Heater(2),FP2,False)
+  Totalize(1,Fog,FP2,False)
+  'Sample(1,LastRec(),FP2,False)
+EndTable
+
+DataTable(daily,True,-1)
+	DataInterval(0,1440,Min,10)
+	Minimum(1,BattV,FP2,False,False)
+	
+  Maximum(6,DLI(),FP2,False,False)
+	Average(2,temp(),FP2,False)
+	Average(2,RH(),FP2,False)
+	Average(2,VPD(),FP2,False)
+	Average(1,T_can1,FP2,False)
+	Average(1,T_can2,FP2,False)
+	Average(6,PAR(),FP2,False)
+	
+	Maximum(1,meantemp,FP2,False,False)
+	Maximum(1,meanrh,FP2,False,False)
+	Maximum(1,meanvpd,FP2,False,False)
+	Maximum(1,temp(3),FP2,False,False)
+	Maximum(1,RH(3),FP2,False,False)
+	Maximum(1,VPD(3),FP2,False,False)
+	Maximum(1,T_can1,FP2,False,False)
+	Maximum(1,T_can2,FP2,False,False)
+	
+	Minimum(1,meantemp,FP2,False,False)
+	Minimum(1,meanrh,FP2,False,False)
+	Minimum(1,meanvpd,FP2,False,False)
+	Minimum(1,temp(3),FP2,False,False)
+	Minimum(1,RH(3),FP2,False,False)
+	Minimum(1,VPD(3),FP2,False,False)
+	Minimum(1,T_can1,FP2,False,False)
+	Minimum(1,T_can2,FP2,False,False)
+	
+  Totalize(1,leds(1),FP2,False)
+  Totalize(1,leds(2),FP2,False)
+  Totalize(1,leds(3),FP2,False)
+  Totalize(1,leds(4),FP2,False)
+  Totalize(1,leds(5),FP2,False)
+  Totalize(1,leds(6),FP2,False)
+  Totalize(1,Exhaust(1),FP2,False)
+  Totalize(1,Exhaust(2),FP2,False)
+  Totalize(1,Fans,FP2,False)
+  Totalize(1,Heater(1),FP2,False)
+  Totalize(1,Heater(2),FP2,False)
+  Totalize(1,Fog,FP2,False)
+EndTable
+
+'Define the subroutine for starting irrigation
+'Sub venting
+'
+'EndSub
+
+'Define the subroutine for starting irrigation
+Sub foggers
+    Fog = True
+    Fans = True
+    push = True 'Push new control states
+    T2_fog = Timer(1,min,0)
+    
+  ' If the timer is greater than 2 minutes
+  ' turn off foggers solenoid 
+    If T2_fog >= 2 Then
+      Fog = True
+      push = True  'Push new control states
+      T2_fog = Timer(1,min,3) ' stop and reset timer
+    EndIf
+EndSub
+
+'Main Program
+BeginProg
+  SW12(SW12_2,1,0) 'Power for T/RH Sensors
+  SW12(SW12_1,1,0) 'Power for PAR Sensors
+	'Main Scan
+	Scan(10,Sec,1,0)
+	T1_vent = Timer(1,Sec,4)
+  T2_fog = Timer(2,Sec,4)
+  RealTime(time)
+	
+	'**************| 5-minute checks |**************
+	If TimeIntoInterval(0,interval,min) Then
+		'Default CR1000X Datalogger Battery Voltage measurement 'BattV'
+		Battery(BattV)
+		'Default CR1000X Datalogger Wiring Panel Temperature measurement 'PTemp_C'
+		PanelTemp(PTemp_C,60)
+		'HMP50/HMP60 Temperature & Relative Humidity Sensor measurements 'AirTC_1' and 'RH_1'
+		VoltSe(temp(1),1,mV1000,1,False,0,60,0.1,-40)
+		VoltSe(RH(1),1,mV1000,2,False,0,60,0.1,0)
+    VoltSe(temp(2),1,mV1000,3,False,0,60,0.1,-40)
+		VoltSe(RH(2),1,mV1000,4,False,0,60,0.1,0)
+    VoltSe(temp(3),1,mV1000,5,False,0,60,0.1,-40)
+		VoltSe(RH(3),1,mV1000,6,False,0,60,0.1,0)
+		For I = 1 To 3
+  		If (RH(I)>100) AND (RH(I)<108) Then RH(I)=100
+  		SatVP(VPs(I),temp(I))
+      VaporPressure (VPa(I),temp(I),RH(I))
+      VPD(I) = VPs(I) - VPa(I)
+    Next I
+    
+		'Generic Single-Ended Voltage measurements 'PAR()' umol/s*m^2
+		VoltSe(PAR(),6,mV5000,7,True,500,60,Mult(),Offs())
+		
+    SDI12Recorder(IRT1(),C7,"0","M1!",1,0,-1)
+    SDI12Recorder(IRT2(),C7,"1","M1!",1,0,-1)
+
+		'Check VPD to intiate foggers
+		AvgSpa(meanvpd,2,VPD(1))
+		AvgSpa(meanrh,2,RH(1))
+	
+    'Check Temp to initiate Cooling exaust routines
+		'AvgSpa(meantemp,1,temp(2))'Change back to 2 when third temp sensor is wired. 
+		meantemp = temp(2) 
+    'Safety night time dew point venting  
+'    If meanvpd < 0.21 Then
+'      Call venting 'Turn on West Exhaust at at 0.20 kPa for timer duration
+'    EndIf
+    For I = 1 To 6
+		  DLI(I) += PAR(I)*300/10^6  'Daily Light Integral at time = t [mol/m^2*duration]
+		Next I
+		
+		'Call Data Tables and Store Data
+		CallTable min5
+		CallTable daily
+	EndIf
+
+ '**************| Data-Driven Routines |**************
+		
+    'Cooling venting level 1
+    If meantemp > 26.7 Then  'GREATER THAN 80DEGf
+      cooling(1) = True
+    EndIf
+    
+    'Cooling venting level 2
+    If meantemp > 29.5 Then
+      cooling(2) = True
+    EndIf
+    
+    If cooling(1) = True
+      Exhaust(1) = True 'Turn on West Exhaust + Louvers at 80degF 
+      If meantemp <= 22 Then
+        Exhaust(1) = False 'Turn off Exhaust when temp reduces
+        cooling(1) = False
+      EndIf
+    EndIf
+    
+    If cooling(2) = True
+      Exhaust(2) = True 'Turn on East Exhaust 85degF 
+      If  meantemp <= 27.2 Then
+        Exhaust(2) = False 'Turn off Exhaust when temp reduces
+        cooling(2) = False
+      EndIf
+    EndIf 
+    
+    ' Check conditions outside before venting in new air. 
+'    If VPD(2) <= VPD(1) Then 'Could add a limit to this ex: IF outside VPD is less than 0.20 & VPD2 < VPD1 Then Override 
+'      override_venting = True
+'    ElseIf VPD(2) > VPD(1) Then
+'      override_venting = False
+'    EndIf
+    
+'**************| Flag Based Routines |************** 
+
+'Routine to push controls
+  
+  If venting = True
+    Exhaust(1) = True
+    Exhaust(2) = True
+    Fans = False
+    push = True 'Push new control states
+    T1_vent = Timer(1,sec,0)
+  EndIf  
+  ' If the timer is greater than 3 minutes
+  ' turn off exhaust and restart fans
+  If T1_vent >= 170 Then
+    Exhaust(1) = False
+    Exhaust(2) = False
+    Fans = True
+    push = True  'Push new control states
+    venting = False
+    T1_vent = Timer(1,sec,3) ' stop and reset timer
+  EndIf
+  
+  If Exhaust(1) = True Then
+    Fans = False
+  EndIf
+  
+'**************| Time Based Routines |**************
+  	
+  'Send controller commands every 10 minutes
+	If TimeIntoInterval(1,10,min) 
+	  push = True
+	EndIf
+
+  'Reset DLI calculator
+  If TimeIntoInterval(1,1440,min)Then
+    For I = 1 To 6
+      DLI(I) = 0
+      DLI_check = 0
+    Next I
+  EndIf
+  
+'  'Dawn Exhaust at 05:30 (5 x 60min + 30min = 330min)
+'  If TimeIntoInterval(330,1440,min) AND override_venting = False Then
+'    venting = True
+'  EndIf 
+'  
+'  'Dusk Exhaust at 19:00 (19 x 60min = 1140 min)
+'  If TimeIntoInterval(1140,1440,min) AND override_venting = False Then
+'  'If TimeIntoInterval(793,1440,min) 'Uncomment this to test venting routine
+'    venting = True  
+'  EndIf 
+	
+	If time(4) > 7 AND time(4) < 19 Then
+    h = time(4) + time(5)/60
+    DLI_check = setpoint_DLI*((.0000297379)*h^4 + (-0.00306)*h^3 + (0.08874)*h^2 + (-0.87838)*h + 2.79617)
+  ElseIf time(4) <= 7 OR time(4) >= 20
+    'Lights should be off between 7am and 8pm
+      DLI_check = 0
+      leds(6) = 0
+  EndIf
+  
+	'Check DLI to intiate LEDs
+	'For I = 1 To 6
+	If TimeIntoInterval(29,30,min) Then
+		For I = 1 To 6
+		  If DLI(I) < DLI_check Then
+		    leds(I) =  1
+		  ElseIf DLI(I) >= DLI_check Then
+		    leds(I) = 0
+		  EndIf
+		Next I
+	EndIf
+	
+  If first = true
+    For I = 1 To 6
+      GetRecord(LastRec(),min5,3)
+      DLI(I) = LastRec(24 + I - 1) 'If the comntroller turns off, use the last DLI on record. DLI array starts at record 24 and goes to recorde 29. 
+      first = false
+    Next I
+  EndIf
+ 
+  
+  If Exhaust(1) = False Then
+    Fans = True
+  EndIf
+  
+	If push = True Then	
+    For I = 1 To 6 'Save current port values.
+      CD16_Output(I) = leds(I)
+    Next I
+    CD16_Output(7) = Exhaust(1)
+    CD16_Output(8) = Exhaust(2)
+    CD16_Output(9) = Fans
+    CD16_Output(10) = Heater(1)
+    CD16_Output(11) = Heater(2)
+    CD16_Output(12) = Fog
+    SDMCD16AC(CD16_Output(), 1, 0)
+    push = False
+  EndIf
+  
+  first = false
+	NextScan
+EndProg
+   6        

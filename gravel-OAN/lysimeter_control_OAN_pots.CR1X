@@ -57,10 +57,10 @@ Public HMP_T, HMP_RH, PAR_Den, PAR_Tot, RadW, RadMJ, vpd, es, ea
 ' for your load cells. This should be in units of kg
 ' CALIBRATED ON 1/8/24
 ' Public Mult(16)={6.51463494,6.711409396,6.800098686,6.733981287,6.688738759,6.779635049,6.733981287,6.733981287,6.779635049,6.993006993,6.992893004,6.666666667,6.802721088,6.825912063,6.896551724,6.849315068}
-Public Mult(20)={6.538260984,6.734195071,7.011901521,6.727945932,6.658706224,6.789760912,6.726504375,6.733051676,6.778153501,6.980383179,6.990732783,6.65515081,6.805772505,6.821563227,6.874522091,6.841285856}
+Public Mult(20)={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 
 ' Public Offs(16)={-1.010850651,-0.805369128,-1.962576328,-0.930407969,-1.869468928,-1.036150393,-0.896738062,-1.650943967,-1.845186842,-1.363636364,-1.277352155,-1.093333333,-1.319727891,-0.26734434,-1.689655172,-1.239726027} 'kg
-Public Offs(20)={-1.072666016,-0.825073142, -2.11724085,-0.996798215,-1.811163062,-1.094327243,-0.854972228,-1.653764692,-1.957547915,-1.361863448,-1.316331927,-1.087811922,-1.356910154,-0.286839698,-1.716222,-1.262473874}
+Public Offs(20)={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 
 ' Change the Mult_T and Off_T variables to match the specific temperature
 ' correction results for your load cells. 
@@ -263,6 +263,7 @@ SequentialMode
     			mass_c(lcnum) = mass(lcnum) - (PTemp_C*Mult_T(lcnum)+Offs_T(lcnum))/1000
         'Go to next load cell scan	
     		NextSubScan
+    		PortSet(C2,0)
     		
     		'Switch to MUX2 port
     		PortSet(C3,1)
@@ -282,10 +283,8 @@ SequentialMode
     		'Take the average of the five scans and put them in the meanmass table
     		CallTable(meanmass)
     		CallTable(meanmass_c)
-    		
-    		'Turn both AM16/32 Multiplexers Off
-    		PortSet(C2,0)
     		PortSet(C3,0)
+
     		Delay(0,150,mSec)
     		'Restart the LC number counter
     		lcnum = 0		
@@ -373,6 +372,7 @@ SequentialMode
 
 
      If irr_control = True Then
+        T_dur = 28 'Duration of timer in seconds
        'If the trigger mass Is below the threshold, irrigation Is initiated For that zone.   
        'TREATMENT 1
         If avg_mass(1)< trig_mass(1) Then 
@@ -428,34 +428,39 @@ SequentialMode
   				irr(4) = False 'If true, turn on irrigation flag for that zone.
   			EndIf
   		EndIf
-  		If sched_control = True
-  		  If TimeIntoInterval(480,1440,Min) Then
+    EndIf
+    
+    If sched_control = True
+        T_dur = 59
+        '8am
+  		  If TimeIntoInterval(540,1440,Min) Then
   		    irr(1) = True
   		    irr(2) = True
   		    irr(3) = True
   		    irr(4) = True
   		  EndIf
+  		  '12pm
   		  If TimeIntoInterval(720,1440,Min) Then
   		    irr(1) = True
   		    irr(2) = True
   		    irr(3) = True
   		    irr(4) = True
   		  EndIf
-  		  If TimeIntoInterval(960,1440,Min) Then
+  		  '3pm
+  		  If TimeIntoInterval(900,1440,Min) Then
   		    irr(1) = True
   		    irr(2) = True
   		    irr(3) = True
   		    irr(4) = True
   		  EndIf
   		EndIf
-    EndIf
     
-    If irr_control = True Then
-      'If any of the irrigation flags are true, call irr_start subroutine.
-      If irr(1) = True OR irr(2) = True OR irr(3) = True OR irr(4) = True
-      	Call irr_start
-      EndIf
+    
+    'If any of the irrigation flags are true, call irr_start subroutine.
+    If irr(1) = True OR irr(2) = True OR irr(3) = True OR irr(4) = True
+    	Call irr_start
     EndIf
+
     
     'Once the average mass has been recorded and irrigation need assessed,
     'reset the flag and the Loop Counter for next measurement
