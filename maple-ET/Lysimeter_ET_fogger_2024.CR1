@@ -9,7 +9,7 @@
 'Author: Dalyn McCauley, M.S., Faculty Research Assistant
 'Contact: dalyn.mccauley@oregonstate.edu
 
-Public vpd_set = 1.5 'kPa
+Public vpd_set = 1.3 'kPa
 Public foggers As Boolean
 Public T_fog
 
