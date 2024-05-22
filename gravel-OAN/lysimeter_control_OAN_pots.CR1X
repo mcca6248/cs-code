@@ -57,16 +57,16 @@ Public HMP_T, HMP_RH, PAR_Den, PAR_Tot, RadW, RadMJ, vpd, es, ea
 ' for your load cells. This should be in units of kg
 ' CALIBRATED ON 1/8/24
 ' Public Mult(16)={6.51463494,6.711409396,6.800098686,6.733981287,6.688738759,6.779635049,6.733981287,6.733981287,6.779635049,6.993006993,6.992893004,6.666666667,6.802721088,6.825912063,6.896551724,6.849315068}
-Public Mult(20)={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+Public Mult_T(20)={1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 
 ' Public Offs(16)={-1.010850651,-0.805369128,-1.962576328,-0.930407969,-1.869468928,-1.036150393,-0.896738062,-1.650943967,-1.845186842,-1.363636364,-1.277352155,-1.093333333,-1.319727891,-0.26734434,-1.689655172,-1.239726027} 'kg
-Public Offs(20)={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+Public Offs_T(20)={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 
 ' Change the Mult_T and Off_T variables to match the specific temperature
 ' correction results for your load cells. 
 ' These should be in units of grams/degC and grams. 
-Public Mult_T(20) ={9.62348329894960,9.62791269562809,9.59569664250319,9.66320157298594,9.60676420034691,9.68086713224982,9.64526948873708,9.54395604653813,9.45237768226451,9.33559590857275,9.66656411206676,9.75664129593924,9.54804819363412,9.45865702051623,9.57199407974325,9.57495094100063,9.42577618810507,9.66596900316426,9.63595019804969,9.52683653154415}
-Public Offs_T(20) ={-0.675761997102320,-1.33298038711509,-1.14165536103798,-1.03638048605205,-1.28069746825158,-1.20523549947721,-1.19897181121491,-1.17146241919798,-1.10319891012783,-0.888552010929721,-1.02429820880246	-1.09827992904711,-1.37434084489544,-1.06833998866868,-1.13655072825677,-1.29234978473988,-1.35107302483360,-1.02200644998590,-1.41480243973413,-1.45532086661188}
+Public Mult(20) ={9.62348329894960,9.62791269562809,9.59569664250319,9.66320157298594,9.60676420034691,9.68086713224982,9.64526948873708,9.54395604653813,9.45237768226451,9.33559590857275,9.66656411206676,9.75664129593924,9.54804819363412,9.45865702051623,9.57199407974325,9.57495094100063,9.42577618810507,9.66596900316426,9.63595019804969,9.52683653154415}
+Public Offs(20) ={-0.675761997102320,-1.33298038711509,-1.14165536103798,-1.03638048605205,-1.28069746825158,-1.20523549947721,-1.19897181121491,-1.17146241919798,-1.10319891012783,-0.888552010929721,-1.02429820880246	-1.09827992904711,-1.37434084489544,-1.06833998866868,-1.13655072825677,-1.29234978473988,-1.35107302483360,-1.02200644998590,-1.41480243973413,-1.45532086661188}
 
 'Define constants and Aliases that are used throughout the program. 
 Const on = 1
@@ -192,7 +192,7 @@ BeginProg
 
 SequentialMode
 	'Main Scan
-	irr_control = False
+	irr_control = True
 	sched_control = True
   
   trig_mass(1) = fc_weight1*treat1
@@ -265,8 +265,8 @@ SequentialMode
         'Go to next load cell scan	
     		NextSubScan
     		PortSet(C2,0)
-    		 
-    		'Switch to MUX2 port
+    	 
+      	'Switch to MUX2 port
     		PortSet(C3,1)
     		Delay(0,150,mSec)
     		SubScan(0,uSec,10)
@@ -276,7 +276,7 @@ SequentialMode
     			lcnum = lcnum + 1
     			
     			'Generic Full Bridge measurements 'LC()' on the AM16/32 Multiplexer
-    			BrFull(mass(lcnum),1,AutoRange,1,VX1,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
+    			BrFull(mass(lcnum),1,AutoRange,2,VX2,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
     			mass_c(lcnum) = mass(lcnum) - (PTemp_C*Mult_T(lcnum)+Offs_T(lcnum))/1000
 
         'Go to next load cell scan	
@@ -287,7 +287,6 @@ SequentialMode
     		CallTable(meanmass_c)
     		PortSet(C3,0)
 
-    		Delay(0,150,mSec)
     		'Restart the LC number counter
     		lcnum = 0		
     	EndIf
@@ -354,7 +353,7 @@ SequentialMode
                lys_array(i,j) = NAN
                outlier_detected = outlier_detected + 1
             EndIf
-            If lys_array(i,j) < 1.0 OR lys_array(i,j) > 5.0 Then
+            If lys_array(i,j) < 1.0 OR lys_array(i,j) > 10.0 Then
                lys_array(i,j) = NAN
                outlier_detected = outlier_detected + 1
             EndIf
