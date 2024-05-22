@@ -27,10 +27,10 @@ Public treat4 = .9
 'Public fc_weight3 = 4.035
 'Public fc_weight4 = 3.923
 
-Public fc_weight1 = 4.408 'Apr 3 2024 at 16:00. Weight of tray ~ 0.554
-Public fc_weight2 = 4.450 'Weight of tray ~ 0.484
-Public fc_weight3 = 4.555 'Weight of tray ~ 0.518
-Public fc_weight4 = 4.447 'Weight of tray ~ 0.522
+Public fc_weight1 = 4.648 'Apr 3 2024 at 16:00. Weight of tray ~ 0.554
+Public fc_weight2 = 6.613 'Weight of tray ~ 0.484
+Public fc_weight3 = 6.634 'Weight of tray ~ 0.518
+Public fc_weight4 = 6.597 'Weight of tray ~ 0.522
 
 
 
@@ -193,7 +193,7 @@ BeginProg
 SequentialMode
 	'Main Scan
 	irr_control = True
-	sched_control = True
+	sched_control = False
   
   trig_mass(1) = fc_weight1*treat1
   trig_mass(2) = fc_weight2*treat2
