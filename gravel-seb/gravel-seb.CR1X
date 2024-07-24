@@ -1,0 +1,106 @@
+'CR1000X Series
+'Combined Script for NDVI, IRT, and NRLITE2 Sensors
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+Public IRT_1(2)
+Public IRT_2(2)
+Public NDVI_Up(2)
+Public NDVI_Dn(2)
+Public NR_Wm2
+Public CNR_Wm2
+Public Temp_C(12) ' Array for 12 temperature sensors
+
+Alias IRT_1(1)=T_target1
+Alias IRT_1(2)=T_body1
+Alias IRT_2(1)=T_target2
+Alias IRT_2(2)=T_body2
+
+Alias NDVI_Up(1) = LowWaveUp
+Alias NDVI_Up(2) = HighWaveUp
+Alias NDVI_Dn(1) = LowWaveDn
+Alias NDVI_Dn(2) = HighWaveDn
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units T_target1=C
+Units T_body1=C
+Units T_target2=C
+Units T_body2=C
+Units LowWaveUp = Watts/m2
+Units HighWaveUp = Watts/m2
+Units LowWaveDn = Watts/m2
+Units HighWaveDn = Watts/m2
+Units NR_Wm2=W/m^2
+Units CNR_Wm2=Watts/meter^2
+
+Public LowReflect, HighReflect, NDVI
+
+'Define Data Tables
+DataTable(Average5min,True,-1)
+    DataInterval(0,5,Min,10)
+    Average(1,T_target1,FP2,False)
+    Average(1,T_body1,FP2,False)
+    Average(1,T_target2,FP2,False)
+    Average(1,T_body2,FP2,False)
+    Average(1,LowReflect,IEEE4,False)
+    Average(1,HighReflect,IEEE4,False)
+    Average(1,NDVI,IEEE4,False)
+    Average(1,NR_Wm2,FP2,False)
+    Average(1,CNR_Wm2,FP2,False)
+    Sample(12, Temp_C(), FP2) ' Sample 12 temperature sensors
+EndTable
+
+DataTable(Daily,True,-1)
+    DataInterval(0,1440,Min,10)
+    Minimum(1,BattV,FP2,False,False)
+EndTable
+
+'Main Program
+BeginProg
+    'Main Scan
+    Scan(1,Min,1,0)
+        'Default CR1000X Datalogger Battery Voltage measurement 'BattV'
+        Battery(BattV)
+        'Default CR1000X Datalogger Wiring Panel Temperature measurement 'PTemp_C'
+        PanelTemp(PTemp_C,60)
+        
+        'NDVI Sensor Measurements
+        SDI12Recorder(NDVI_Up(),C1,"0","M0!",1.0,0.0)
+        SDI12Recorder(NDVI_Dn(),C3,"0","M0!",1.0,0.0)
+
+        'IRT Sensor Measurements
+        SDI12Recorder(IRT_1(),C5,"2","M1!",1,0,-1)
+        SDI12Recorder(IRT_2(),C5,"3","M1!",1,0,-1)
+        
+        'Calculate Reflectance Values
+        HighReflect = (HighWaveDn / HighWaveUp)
+        LowReflect = (LowWaveDn / LowWaveUp)
+        
+        'Calculate NDVI
+        NDVI = (HighReflect - LowReflect) / (HighReflect + LowReflect)
+
+        'NR-LITE2 Net Radiometer Measurement
+        VoltDiff(NR_Wm2,1,mV200,7,True,0,50,73.52941,0)
+       
+        '109L Temperature Sensors on Multiplexer
+    		Therm109(Temp_C(1),1,1,Vx1,0,_60Hz,1,0)
+    		Therm109(Temp_C(2),1,2,Vx1,0,_60Hz,1,0)
+    		Therm109(Temp_C(3),1,3,Vx1,0,_60Hz,1,0)
+    		Therm109(Temp_C(4),1,4,Vx1,0,_60Hz,1,0)
+    		Therm109(Temp_C(5),1,5,Vx2,0,_60Hz,1,0)
+    		Therm109(Temp_C(6),1,6,Vx2,0,_60Hz,1,0)
+    		Therm109(Temp_C(7),1,7,Vx2,0,_60Hz,1,0)
+    		Therm109(Temp_C(8),1,8,Vx2,0,_60Hz,1,0)
+    		Therm109(Temp_C(9),1,9,Vx3,0,_60Hz,1,0)
+    		Therm109(Temp_C(10),1,10,Vx3,0,_60Hz,1,0)
+    		Therm109(Temp_C(11),1,11,Vx3,0,_60Hz,1,0)
+    		Therm109(Temp_C(12),1,12,Vx3,0,_60Hz,1,0)
+    
+        'Call Data Tables and Store Data
+        CallTable Average5min
+        CallTable Daily
+    NextScan
+EndProg
+

@@ -1,0 +1,212 @@
+'CR1000
+'Created by Short Cut (4.3)
+
+'Declare Variables and Units
+Public vwc_trig = 0.35
+Public vpd_trig = 1.5
+Public sms_control As Boolean
+Public BattV
+Public PTemp_C
+Public CS65X(48,3),VWC(48), vwc_avg
+Public ATMOS(10,4), vpd
+Public Temp_C(24)
+Dim a, i
+Public addr(48) = {"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","U","V","W","X","Y","Z","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","u","v","w","x","y","z"} As String
+Public stop, mist, Flag(3) As Boolean
+Public T1, T2
+Public rtime(9)
+
+'Define Data Tables
+DataTable(All_5min_potnpot,True,-1)
+	DataInterval(0,5,Min,10)
+	Average(1,vwc_avg,IEEE4,False)
+	Sample(1,vpd,FP2,False)
+	Totalize(1,mist,FP2,False)
+	Average(48,VWC(),IEEE4,False)
+	Sample(40,ATMOS(),FP2,False)
+	Average(1,Temp_C(1),FP2,False)
+	Average(1,Temp_C(2),FP2,False)
+	Average(1,Temp_C(3),FP2,False)
+	Average(1,Temp_C(4),FP2,False)
+	Average(1,Temp_C(5),FP2,False)
+	Average(1,Temp_C(6),FP2,False)
+	Average(1,Temp_C(7),FP2,False)
+	Average(1,Temp_C(8),FP2,False)
+	Average(1,Temp_C(9),FP2,False)
+	Average(1,Temp_C(10),FP2,False)
+	Average(1,Temp_C(11),FP2,False)
+	Average(1,Temp_C(12),FP2,False)
+	Sample(48,CS65X(),IEEE4,False)
+EndTable
+
+'Define Data Tables
+DataTable(VWC_raw,True,-1)
+	DataInterval(0,5,Min,10)
+	Sample(48,CS65X(),IEEE4,False)
+EndTable
+
+Sub irr_start
+    If stop = True
+      PortSet(7,1)
+      Delay (1,10,mSec)
+      PortSet(7,0)
+      stop = False
+     ' T1 = Timer(1,sec,0)
+    EndIf
+    
+    If mist = True
+      PortSet(8,1)
+      T2 = Timer(2,sec,0)
+    EndIf
+    
+  ' If the timer is greater than 60s
+  ' turn solenoid off and set stop() flag to zero
+'    If T1 >= 2 Then
+'      PortSet(7,0)
+'      stop = False
+'      T1 = Timer(1,sec,3) ' stop and reset timer
+'    EndIf
+    
+    If T2 >= 19
+      PortSet(8,0)
+      mist = False
+      T2 = Timer(2,sec,3)
+    EndIf
+EndSub
+
+'Main Program
+BeginProg
+	'Main Scan
+	SequentialMode
+	stop = False
+	mist = False
+	Scan(30,Sec,1,0)
+	RealTime(rtime)
+	  
+		'Default CR3000 Datalogger Battery Voltage measurement 'BattV'
+		Battery(BattV)
+		'Default CR3000 Datalogger Wiring Panel Temperature measurement 'PTemp_C'
+		PanelTemp(PTemp_C,_60Hz)
+		
+		If TimeIntoInterval(0,1,min) Then
+  		'CS650/655 Water Content Reflectometer measurements 
+  		SW12(1)
+  		Delay(2,2000,mSec)
+      SDI12Recorder(CS65X(1,1),5,"A","M!",1,0)
+  		SDI12Recorder(CS65X(2,1),5,"B","M!",1,0)		
+  		SDI12Recorder(CS65X(3,1),5,"C","M!",1,0)
+  		SDI12Recorder(CS65X(4,1),5,"D","M!",1,0)
+  		SDI12Recorder(CS65X(5,1),5,"E","M!",1,0)
+  		SDI12Recorder(CS65X(6,1),5,"F","M!",1,0)
+  		SDI12Recorder(CS65X(7,1),5,"G","M!",1,0)
+  		SDI12Recorder(CS65X(8,1),5,"H","M!",1,0)
+  		SDI12Recorder(CS65X(9,1),5,"I","M!",1,0)
+  		SDI12Recorder(CS65X(10,1),5,"J","M!",1,0)
+  		SDI12Recorder(CS65X(11,1),5,"K","M!",1,0)
+  		SDI12Recorder(CS65X(12,1),5,"L","M!",1,0)		
+  		SDI12Recorder(CS65X(13,1),5,"M","M!",1,0)
+  		SDI12Recorder(CS65X(14,1),5,"N","M!",1,0)
+  		SDI12Recorder(CS65X(15,1),5,"O","M!",1,0)
+  		SDI12Recorder(CS65X(16,1),5,"P","M!",1,0)
+  		SDI12Recorder(CS65X(17,1),5,"Q","M!",1,0)
+  		SDI12Recorder(CS65X(18,1),5,"R","M!",1,0)
+  		SDI12Recorder(CS65X(19,1),5,"U","M!",1,0)
+  		SDI12Recorder(CS65X(20,1),5,"V","M!",1,0)
+  		SDI12Recorder(CS65X(21,1),5,"W","M!",1,0)
+  		SDI12Recorder(CS65X(22,1),5,"X","M!",1,0)				
+  		SDI12Recorder(CS65X(23,1),5,"Y","M!",1,0)
+  		SDI12Recorder(CS65X(24,1),5,"Z","M!",1,0)
+  		SDI12Recorder(CS65X(25,1),5,"a","M!",1,0)
+  		SDI12Recorder(CS65X(26,1),5,"b","M!",1,0)
+  		SDI12Recorder(CS65X(27,1),5,"c","M!",1,0)
+  		SDI12Recorder(CS65X(28,1),5,"d","M!",1,0)
+  		SDI12Recorder(CS65X(29,1),5,"e","M!",1,0)
+  		SDI12Recorder(CS65X(30,1),5,"f","M!",1,0)
+  		SDI12Recorder(CS65X(31,1),5,"g","M!",1,0)
+  		SDI12Recorder(CS65X(32,1),5,"h","M!",1,0)		
+  		SDI12Recorder(CS65X(33,1),5,"i","M!",1,0)
+  		SDI12Recorder(CS65X(34,1),5,"j","M!",1,0)
+  		SDI12Recorder(CS65X(35,1),5,"k","M!",1,0)
+  		SDI12Recorder(CS65X(36,1),5,"l","M!",1,0)
+  		SDI12Recorder(CS65X(37,1),5,"m","M!",1,0)
+  		SDI12Recorder(CS65X(38,1),5,"n","M!",1,0)
+  		SDI12Recorder(CS65X(39,1),5,"o","M!",1,0)
+  		SDI12Recorder(CS65X(40,1),5,"p","M!",1,0)
+  		SDI12Recorder(CS65X(41,1),5,"q","M!",1,0)
+  		SDI12Recorder(CS65X(42,1),5,"r","M!",1,0)				
+  		SDI12Recorder(CS65X(43,1),5,"u","M!",1,0)
+  		SDI12Recorder(CS65X(44,1),5,"v","M!",1,0)
+  		SDI12Recorder(CS65X(45,1),5,"w","M!",1,0)
+  		SDI12Recorder(CS65X(46,1),5,"x","M!",1,0)
+  		SDI12Recorder(CS65X(47,1),5,"y","M!",1,0)
+  		SDI12Recorder(CS65X(48,1),5,"z","M!",1,0)
+  		Delay(2,1000,mSec)	
+  		SW12(0)
+  		
+  		'ATMOS-14 MEASUREMENT'
+  		SDI12Recorder(ATMOS(1,1),1,"0","M!",1,0)
+		  SDI12Recorder(ATMOS(2,1),1,"1","M!",1,0)
+		  SDI12Recorder(ATMOS(3,1),1,"2","M!",1,0)
+		  SDI12Recorder(ATMOS(4,1),1,"3","M!",1,0)
+		  SDI12Recorder(ATMOS(5,1),1,"4","M!",1,0)
+		  SDI12Recorder(ATMOS(6,1),1,"5","M!",1,0)
+		  SDI12Recorder(ATMOS(7,1),1,"6","M!",1,0)
+		  SDI12Recorder(ATMOS(8,1),1,"7","M!",1,0)
+		  SDI12Recorder(ATMOS(9,1),1,"8","M!",1,0)
+		  SDI12Recorder(ATMOS(10,1),1,"9","M!",1,0)
+		  
+		  '109 Temperature Probe measurement 'Temp_C()'
+  		Therm109(Temp_C(1),1,1,1,0,_60Hz,1,0)
+  		Therm109(Temp_C(2),1,2,1,0,_60Hz,1,0)
+  		Therm109(Temp_C(3),1,3,1,0,_60Hz,1,0)
+  		Therm109(Temp_C(4),1,4,1,0,_60Hz,1,0)
+  		Therm109(Temp_C(5),1,5,2,0,_60Hz,1,0)
+  		Therm109(Temp_C(6),1,6,2,0,_60Hz,1,0)
+  		Therm109(Temp_C(7),1,7,2,0,_60Hz,1,0)
+  		Therm109(Temp_C(8),1,8,2,0,_60Hz,1,0)
+  		Therm109(Temp_C(9),1,9,3,0,_60Hz,1,0)
+  		Therm109(Temp_C(10),1,10,3,0,_60Hz,1,0)
+  		Therm109(Temp_C(11),1,11,3,0,_60Hz,1,0)
+  		Therm109(Temp_C(12),1,12,3,0,_60Hz,1,0)
+    	Public sat_vp
+  		SatVP (sat_vp,ATMOS(4,2))
+  		vpd = sat_vp - ATMOS(4,1)
+   
+      If vpd > vpd_trig Then
+                mist = True
+        			Else
+        			  mist = False
+      EndIf	
+      For i = 1 To 48
+		    'a = addr(i)
+        VWC(i) = CS65X(i,1)
+        If VWC(i) > 1.0 Then
+          VWC(i) = NaN
+        EndIf
+		    'VWC(i) = 6.771*10^(-10)*CS655X(i,1)^3 - 5.105*10^(-6)*CS655X(i,1)^2 + 1.302*10^(-2)*CS655X(i,1)-10.848
+  		Next i
+  		AvgSpa(vwc_avg,48,VWC(1))		
+		'Call Data Tables and Store Data
+		  CallTable All_5min_potnpot
+		  CallTable VWC_raw
+	  EndIf
+		
+
+		
+  'Check irrigaiton need every 30 sec
+  If rtime(5) < 10 AND rtime(4) = 8 OR rtime(4) = 12 OR rtime(4) = 16 Then
+    If  TimeIntoInterval(0,30,sec)
+      If vwc_avg > vwc_trig Then
+    			stop = True
+    		Else
+    		  stop = False
+      EndIf
+    EndIf
+  EndIf
+  
+	
+  If stop = True OR mist = True
+  	Call irr_start 'call start stopigation sub routine
+  EndIf
+	NextScan
+EndProg

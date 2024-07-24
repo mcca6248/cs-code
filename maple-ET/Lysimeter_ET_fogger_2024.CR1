@@ -76,6 +76,7 @@ DataTable(store5min_all,True,-1)
   Sample(16,lys_mass(),IEEE4)
   Sample(12,ATMOS14_fog(),FP2,False)
   Sample(12,ATMOS14_dry(),FP2,False)
+  Totalize(1,foggers(),FP2,False)
 EndTable
 
 'These are intermediary tables used to simplify the program.
@@ -89,7 +90,7 @@ Sub foggers_on
       T_fog = Timer(5,sec,0)
     EndIf
     
-    If T_fog >= 29
+    If T_fog >= 119
       PortSet(5,0)
       foggers = False
       T_fog = Timer(5,sec,3)
@@ -139,9 +140,11 @@ SequentialMode
   			
   			'Generic Full Bridge measurements 'LC()' on the AM16/32 Multiplexer
   			BrFull(mass(lcnum),1,AutoRange,1,VX1,1,2500,False,True,500,60,Mult(lcnum),Offs(lcnum))
+        
       'Go to next load cell scan	
   		NextSubScan
   		BrFull(mass(13),1,AutoRange,4,VX2,1,2500,False,True,500,60,Mult(13),Offs(13))	
+  		BrFull(mass(1),1,AutoRange,5,VX2,1,2500,False,True,500,60,Mult(1),Offs(1))
   		
   		'Take the average of the five scans and put them in the meanmass table
   		CallTable(meanmass)
