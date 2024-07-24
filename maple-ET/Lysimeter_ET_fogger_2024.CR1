@@ -25,6 +25,7 @@ Alias switch(1) = readsensors
 Public ATMOS(9)
 Public ATMOS14_fog(3,4)
 Public ATMOS14_dry(3,4)
+'Public ATMOS14_ambient(1,4)
 Public RH, VPD, vp_s
 
 ' Change the Mult and Off variables to match the specific calibration equations 
@@ -120,6 +121,7 @@ SequentialMode
 	  SDI12Recorder(ATMOS14_dry(1,1),7,"7","M!",1,0)
 	  SDI12Recorder(ATMOS14_dry(2,1),7,"8","M!",1,0)
 	  SDI12Recorder(ATMOS14_dry(3,1),7,"9","M!",1,0)
+	  'SDI12Recorder(ATMOS14_ambient(1,1),7,"3","M!",1,0)
 		
     SatVP(vp_s,T_air)
     RH = P_vap/vp_s * 100

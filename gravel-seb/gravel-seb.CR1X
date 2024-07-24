@@ -11,6 +11,7 @@ Public NDVI_Dn(2)
 Public NR_Wm2
 Public CNR_Wm2
 Public Temp_C(12) ' Array for 12 temperature sensors
+'Public ATMOS(9)
 
 Alias IRT_1(1)=T_target1
 Alias IRT_1(2)=T_body1
@@ -21,6 +22,25 @@ Alias NDVI_Up(1) = LowWaveUp
 Alias NDVI_Up(2) = HighWaveUp
 Alias NDVI_Dn(1) = LowWaveDn
 Alias NDVI_Dn(2) = HighWaveDn
+
+'Alias ATMOS(1)=solar
+'Alias ATMOS(2)=precip
+'Alias ATMOS(3)=strikes
+'Alias ATMOS(4)=WS
+'Alias ATMOS(5)=WD
+'Alias ATMOS(6)=WG
+'Alias ATMOS(7)=T_air
+'Alias ATMOS(8)=P_vap
+'Alias ATMOS(9)=P_atm
+'
+'Units precip=in
+'Units strikes=count
+'Units WS=m/s
+'Units WD=deg
+'Units WG=m/s
+'Units T_air=C
+'Units P_vap=kpa
+'Units P_atm=kpa
 
 Units BattV=Volts
 Units PTemp_C=Deg C
@@ -39,7 +59,17 @@ Public LowReflect, HighReflect, NDVI
 
 'Define Data Tables
 DataTable(Average5min,True,-1)
-    DataInterval(0,5,Min,10)
+    DataInterval(0,5,Min,-1)
+'   Average(1,solar,FP2,False)
+'  	Totalize(1,precip,FP2,False)
+'  	Average(1,T_air,FP2,False)
+'  	Average(1,P_vap,FP2,False)
+'  	Average(1,P_atm,FP2,False)
+'  	Sample(1,vp_s,FP2, False)
+'  	Totalize(1,strikes,FP2,False)
+'  	Average(1,WS,FP2,False)
+'  	Average(1,WD,FP2,False)
+'  	Average(1,WG,FP2,False)
     Average(1,T_target1,FP2,False)
     Average(1,T_body1,FP2,False)
     Average(1,T_target2,FP2,False)
@@ -65,6 +95,10 @@ BeginProg
         Battery(BattV)
         'Default CR1000X Datalogger Wiring Panel Temperature measurement 'PTemp_C'
         PanelTemp(PTemp_C,60)
+        
+		    'measurements for ATMOS-41
+    		'solar', 'precip', 'strikes','WS', 'WD', 'WG', 'T_air', 'P_vap', and 'P_atm'
+    		'SDI12Recorder(ATMOS(),C5,"0","M!",1,0)
         
         'NDVI Sensor Measurements
         SDI12Recorder(NDVI_Up(),C1,"0","M0!",1.0,0.0)
