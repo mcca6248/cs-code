@@ -91,7 +91,7 @@ Sub foggers_on
       T_fog = Timer(5,sec,0)
     EndIf
     
-    If T_fog >= 119
+    If T_fog >= 59
       PortSet(5,0)
       foggers = False
       T_fog = Timer(5,sec,3)
@@ -173,7 +173,7 @@ SequentialMode
       GetRecord(lys_mass(),meanmass,1) ' Put five minute averages LC measurement into new array
       
       If VPD >= vpd_set Then
-          If TimeIntoInterval(0,600,Sec) Then
+          If TimeIntoInterval(0,300,Sec) Then
             foggers = True
           EndIf
       EndIf
