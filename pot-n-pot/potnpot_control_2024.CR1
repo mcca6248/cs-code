@@ -18,7 +18,7 @@ Public rtime(9)
 
 'Define Data Tables
 DataTable(All_5min_potnpot,True,-1)
-	DataInterval(0,5,Min,10)
+	DataInterval(0,1,Min,10)
 	Average(1,vwc_avg,IEEE4,False)
 	Sample(1,vpd,FP2,False)
 	Totalize(1,mist,FP2,False)
