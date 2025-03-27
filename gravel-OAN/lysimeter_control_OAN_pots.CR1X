@@ -215,9 +215,9 @@ BeginProg
 
 SequentialMode
 	'Main Scan
-	irr_control = True
-	sched_control = False
-	fan_cool = False
+	irr_control = False
+	sched_control = True
+	fan_cool = True
 	
   fc_weight1 = total_weight1 - Wpot1
   fc_weight2 = total_weight2 - Wpot2
@@ -477,12 +477,12 @@ SequentialMode
   		    irr(4) = True
   		  EndIf
   		  '3pm
-  		  If TimeIntoInterval(920,1440,Min) Then
-  		    irr(1) = True
-  		    irr(2) = True
-  		    irr(3) = True
-  		    irr(4) = True
-  		  EndIf
+'  		  If TimeIntoInterval(920,1440,Min) Then
+'  		    irr(1) = True
+'  		    irr(2) = True
+'  		    irr(3) = True
+'  		    irr(4) = True
+'  		  EndIf
   		EndIf
     
     
